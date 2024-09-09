@@ -1,0 +1,62 @@
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from bs4 import BeautifulSoup
+import pandas as pd
+import time
+
+# Menampung opsi yang bisa dimasukkan ke selenium
+opsi = webdriver.ChromeOptions()
+opsi.add_argument('--headless')
+# Panggil file.exe
+servis = Service('chromedriver.exe')
+driver = webdriver.Chrome(service = servis, options = opsi)
+
+shopee_url = 'https://shopee.co.id/galaxymacbook'
+driver.set_window_size(1300, 800)
+driver.get(shopee_url)
+
+rentang = 500
+for i in range (1,5):
+    akhir = rentang * i
+    perintah = "window.scrollTo(0, "+str(akhir)+")"
+    driver.execute_script(perintah)
+    print("loading ke-"+str(i))
+    time.sleep(1)
+
+time.sleep(5)
+
+# Screenshot / menampilkan web yang mau discraping
+driver.save_screenshot("macbook.png")
+content = driver.page_source
+driver.quit()
+
+data = BeautifulSoup(content, 'html.parser')
+#print(data.encode("utf-8"))
+
+i = 1
+base_url = "https://shopee.co.id"
+
+list_nama_produk, list_gambar, list_harga, list_link, list_produk_yang_terjual = [],[],[],[],[]
+
+for area in data.find_all('div', class_= "col-xs-2 shop-collection-view__item"):
+    print('proses data ke-'+str(i))
+    nama_produk = area.find('div', class_= "whitespace-normal line-clamp-2 break-words min-h-[2.5rem] text-sm").get_text()
+    gambar = area.find('img') ['src']
+    harga = area.find('span', class_= "font-medium text-base/5 truncate").get_text()
+    link = base_url + area.find('a') ['href']
+    produk_yang_terjual = area.find('div', class_= "truncate text-shopee-black87 text-xs min-h-4")
+    if produk_yang_terjual != None:
+        produk_yang_terjual = produk_yang_terjual.get_text()
+  
+    list_nama_produk.append(nama_produk)
+    list_gambar.append(gambar)
+    list_harga.append(harga)
+    list_link.append(link)
+    list_produk_yang_terjual.append(produk_yang_terjual)
+    i+=1
+    print("------")
+
+df = pd.DataFrame({'Nama produk':list_nama_produk, 'Gambar':list_gambar, 'Harga':list_harga, 'Link':list_link, 'Produk yang terjual':list_produk_yang_terjual})
+writer = pd.ExcelWriter('macbook.xlsx')
+df.to_excel(writer, 'Sheet1', index = False)
+writer.save()
